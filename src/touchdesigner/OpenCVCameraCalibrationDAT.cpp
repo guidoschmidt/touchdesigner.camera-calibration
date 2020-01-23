@@ -19,8 +19,6 @@
 #include <chrono>
 #include <thread>
 
-std::atomic<bool> _calculating = false;
-
 // These functions are basic C function, which the DLL loader can find
 // much easier than finding a C++ Class.
 // The DLLEXPORT prefix is needed so the compile exports these functions from the .dll
@@ -95,37 +93,34 @@ void CPlusPlusDATExample::execute(
 	if (inputs->getNumInputs() > 0)
 	{
 		if (_cameraCalibrator->isCalibrated()) {
+			inputs->enablePar("Calibrate", false);
+			// Status
 			output->setTableSize(5, 5);
 			output->setCellString(0, 0, "Status");
 			output->setCellString(1, 0, "Calibrated");
 			output->setCellString(2, 0, "");
 			output->setCellString(3, 0, "");
 			output->setCellString(4, 0, "");
-
+			// Focal length
 			output->setCellString(0, 1, "Focal Length");
 			output->setCellDouble(1, 1, _cameraCalibrator->getFocalLength());
-
+			// Principal point
 			output->setCellString(0, 2, "Principal Point");
 			output->setCellDouble(1, 2, _cameraCalibrator->getPrincipalPointInMillimeter().x);
 			output->setCellDouble(2, 2, _cameraCalibrator->getPrincipalPointInMillimeter().y);
-
+			// Distortion coefficients
 			double ce0 = _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(0, 0);
 			double ce1 = _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(1, 0);
 			double ce2 = _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(2, 0);
 			double ce3 = _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(3, 0);
-
 			output->setCellString(0, 3, "Distortion Coefficients");
 			output->setCellDouble(1, 3, ce0);
 			output->setCellDouble(2, 3, ce1);
 			output->setCellDouble(3, 3, ce2);
 			output->setCellDouble(4, 3, ce3);
-			//output->setCellDouble(2, 3, _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(1, 0));
-			//output->setCellDouble(3, 3, _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(2, 0));
-			//output->setCellDouble(3, 4, _cameraCalibrator->getDistortionCoefficientMatrix().at<double>(0, 3));
-
 			return;
 		}
-		if (_calculating == false) {
+		else {
 			inputs->enablePar("Calibrate", true);
 			const OP_DATInput* input = inputs->getInputDAT(0);
 			int numRows = input->numRows;
@@ -145,11 +140,6 @@ void CPlusPlusDATExample::execute(
 				output->setCellString(i + 1, 0, imageFiles[i].c_str());
 			}
 		}
-		else {
-			inputs->enablePar("Calibrate", false);
-			output->setTableSize(1, 1);
-			output->setCellString(0, 0, "Calculating...");
-		}
 	}
 	else {
 		inputs->enablePar("Calibrate", false);
@@ -162,7 +152,7 @@ int32_t CPlusPlusDATExample::getNumInfoCHOPChans(void* reserved1)
 {
 	// We return the number of channel we want to output to any Info CHOP
 	// connected to the CHOP. In this example we are just going to send one channel.
-	return 4;
+	return 0;
 }
 
 void CPlusPlusDATExample::getInfoCHOPChan(int32_t index,
@@ -175,21 +165,6 @@ void CPlusPlusDATExample::getInfoCHOPChan(int32_t index,
 	{
 		chan->name->setString("executeCount");
 		chan->value = (float)myExecuteCount;
-	}
-	if (index == 1)
-	{
-		chan->name->setString("offset");
-		chan->value = (float)myOffset;
-	}
-	if (index == 2)
-	{
-		chan->name->setString(myChop.c_str());
-		chan->value = (float)myOffset;
-	}
-	if (index == 3)
-	{
-		chan->name->setString(myChopChanName.c_str());
-		chan->value = myChopChanVal;
 	}
 }
 
@@ -269,17 +244,6 @@ void CPlusPlusDATExample::getInfoDATEntries(int32_t index,
 
 void CPlusPlusDATExample::setupParameters(OP_ParameterManager* manager, void* reserved1)
 {
-	// DAT output type
-	{
-		OP_StringParameter	sp;
-		sp.name = "Outputtype";
-		sp.label = "Output Type";
-		sp.defaultValue = "Table";
-		const char* names[] = { "Table", "Text" };
-		const char* labels[] = { "Table", "Text" };
-		OP_ParAppendResult res = manager->appendMenu(sp, 2, names, labels);
-		assert(res == OP_ParAppendResult::Success);
-	}
 	// Execute
 	{
 		OP_NumericParameter	np;
@@ -294,14 +258,12 @@ void CPlusPlusDATExample::performCalibrationAsync()
 {
 	_cameraCalibrator->evaluateImageStack();
 	_cameraCalibrator->performCalibration();
-	_calculating = false;
 }
 
 void CPlusPlusDATExample::pulsePressed(const char* name, void* reserved1)
 {
 	if (!strcmp(name, "Calibrate"))
 	{
-		_calculating = true;
 		auto calculation_thread = std::async(&CPlusPlusDATExample::performCalibrationAsync, this);
 	}
 }
