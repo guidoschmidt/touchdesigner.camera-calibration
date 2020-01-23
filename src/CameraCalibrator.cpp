@@ -1,6 +1,7 @@
 #include "CameraCalibrator.hpp"
 
 CameraCalibrator::CameraCalibrator() {
+  _isCalibrated = false;
   // Checkerboard parameters
   this->_imageCount                  = 1;
   this->_images                      = {};
@@ -37,13 +38,19 @@ CameraCalibrator::CameraCalibrator() {
   // CALIB_FIX_S1_S2_S3_S4
 }
 
-CameraCalibrator::~CameraCalibrator() {
-  
-}
+CameraCalibrator::~CameraCalibrator() {}
 
 void CameraCalibrator::addImageFile(std::string filePath)
 {
   this->_imageFiles.push_back(filePath);
+}
+
+void CameraCalibrator::clearImageFiles() {
+    _imageFiles.clear();
+}
+
+std::vector<std::string> CameraCalibrator::getImageFiles() {
+    return _imageFiles;
 }
 
 void CameraCalibrator::evaluateImageStack()
@@ -114,6 +121,7 @@ void CameraCalibrator::performCalibration()
                               this->_principalPointInMilliMeter,
                               this->_aspectRatio);
   std::cout << "Calibrated Successfully." << std::endl;
+  _isCalibrated = true;
 }
 
 cv::Mat CameraCalibrator::undistorImage(cv::Mat image)
