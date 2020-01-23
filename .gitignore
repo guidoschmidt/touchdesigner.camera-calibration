@@ -1,2 +1,6 @@
+# Build directory
+build/
+
+# Example
 example/Backup/
 **.*.toe
